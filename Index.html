@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#07080d" />
+  <title>Portfolio Atlas</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overscroll-behavior: none; }
+    body {
+      background: #07080d;
+      color: #f9fafb;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+```
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2d2d3a; border-radius: 3px; }
+
+/* ── ANIMATIONS ── */
+@keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+@keyframes spin   { to{transform:rotate(360deg)} }
+@keyframes shimmer{ 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes slideUp{ from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── UTILITY ── */
+.live-dot { width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 1.8s ease-in-out infinite;flex-shrink:0; }
+.spinner  { width:14px;height:14px;border:2px solid rgba(255,255,255,.1);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0; }
+.skeleton { background:linear-gradient(90deg,#1a1a2e 25%,#252540 50%,#1a1a2e 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:4px; }
+.price-up   { color:#22c55e; }
+.price-down { color:#f87171; }
+.price-flat { color:#6b7280; }
+.slide-up { animation: slideUp 0.2s ease forwards; }
+
+/* ── LAYOUT ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 600px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* ── STICKY HEADER ── */
+.header {
+  flex-shrink: 0;
+  background: #07080d;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 12px 16px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* ── CONTENT SCROLL AREA ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 12px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  flex-shrink: 0;
+  background: #0a0c14;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.bottom-nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 14px;
+  min-width: 64px;
+  color: #4b5563;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  border-top: 2px solid transparent;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.nav-btn .nav-icon { font-size: 16px; line-height: 1; }
+.nav-btn.active { color: #a78bfa; border-top-color: #7c3aed; }
+.nav-btn:active { opacity: 0.7; }
+
+/* ── CARDS ── */
+.card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+.card.open { border-color: rgba(255,255,255,0.12); }
+.card-header {
+  padding: 13px 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.card-body {
+  padding: 0 14px 13px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+/* ── PROGRESS BAR ── */
+.progress-bar {
+  height: 2px;
+  background: #1a1a2e;
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+  transition: width 0.3s ease;
+  border-radius: 1px;
+}
+
+/* ── MOVERS STRIP ── */
+.movers-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 0 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.movers-strip::-webkit-scrollbar { display: none; }
+.mover-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* ── SECTOR TAGS ── */
+.sector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+.sector-tag {
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+/* ── REFRESH BTN ── */
+.refresh-btn {
+  background: rgba(124,58,237,0.1);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #a78bfa;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.refresh-btn:disabled { opacity: 0.45; }
+.refresh-btn:active { opacity: 0.7; }
+
+/* ── METRIC BOX ── */
+.metric-box { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; }
+.metric-label { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+
+/* ── RESEARCH TABLE ── */
+.research-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 14px;
+  gap: 8px;
+}
+
+/* ── SWAP ROW ── */
+.swap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+}
+```
+
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── TIERS ───────────────────────────────────────────────────────────────────
+const TIERS = {
+FOREVER:   { label:“Hold Forever”,       emoji:“💎”, color:”#a78bfa”, bg:“rgba(167,139,250,0.08)”, border:“rgba(167,139,250,0.25)” },
+ADD:       { label:“Add Heavily”,         emoji:“🚀”, color:”#34d399”, bg:“rgba(52,211,153,0.07)”,  border:“rgba(52,211,153,0.25)”  },
+HOLD:      { label:“Hold / Trim Rips”,   emoji:“⚖️”, color:”#fbbf24”, bg:“rgba(251,191,36,0.07)”,  border:“rgba(251,191,36,0.2)”   },
+WATCHLIST: { label:“Watchlist”,           emoji:“👀”, color:”#60a5fa”, bg:“rgba(96,165,250,0.07)”,  border:“rgba(96,165,250,0.2)”   },
+PATIENCE:  { label:“Hold for Bounce”,    emoji:“⏳”, color:”#f97316”, bg:“rgba(249,115,22,0.07)”,  border:“rgba(249,115,22,0.2)”   },
+};
+
+// ─── RESEARCH ────────────────────────────────────────────────────────────────
+const ERACOLOR = { Classic:”#6b7280”, Modern:”#60a5fa”, Recent:”#34d399”, Practitioner:”#f59e0b” };
+const RESEARCH = [
+{ source:“Evans & Archer (1968)”,   finding:“~10 stocks eliminates most diversifiable risk”,      optimal:“10–15”, era:“Classic”      },
+{ source:“Reilly & Brown”,          finding:“90% of max diversification benefit”,                 optimal:“12–18”, era:“Classic”      },
+{ source:“Statman (1987)”,          finding:“Borrowing investor needs more buffer”,               optimal:“30–40”, era:“Modern”       },
+{ source:“Fisher & Lorie”,          finding:“95% of diversification benefits captured”,           optimal:“30–32”, era:“Modern”       },
+{ source:“Markowitz / MPT”,         finding:“Eliminate ~90% of unsystematic risk”,               optimal:“20–30”, era:“Modern”       },
+{ source:“CFA Institute (2021)”,    finding:“Large-cap: little gain beyond 15; Small-cap: ~26”,  optimal:“15–26”, era:“Recent”       },
+{ source:“Buffett / Munger”,        finding:“Concentrate on high-conviction picks”,               optimal:“10–15”, era:“Practitioner” },
+{ source:“Terry Smith / Fundsmith”, finding:“Run concentrated quality portfolio”,                 optimal:“20–30”, era:“Practitioner” },
+{ source:“Ensemble Capital”,        finding:“Beyond 25, additional stocks add little benefit”,    optimal:“~25”,   era:“Practitioner” },
+{ source:“Motley Fool”,             finding:“Balance between manageability & diversification”,    optimal:“25+”,   era:“Practitioner” },
+];
+
+// ─── STOCKS ──────────────────────────────────────────────────────────────────
+const PRIORITY_CANDIDATES = [
+{ rank:1,  ticker:“NVDA”, name:“Nvidia”,                  tier:“FOREVER”,  conviction:10, underPrice20:false,
+sector:“Semiconductors / AI Infrastructure”, sectorColor:”#8b5cf6”, price:”~$183”, marketCap:”$4.45T”,
+thesis:“The engine of every AI build-out. FY2026 revenue $216B (+65%). Data center dominance with no credible challenger. CUDA moat is as deep as any software moat. TSM companion — you want both.”,
+metrics:“FY2026 Rev $216B · EPS $4.93 · Analyst target $264”, signal:“Add on dips to $175–180. Core forever position alongside TSM.” },
+{ rank:2,  ticker:“RKLB”, name:“Rocket Lab”,              tier:“ADD”,      conviction:9,  underPrice20:false,
+sector:“Aerospace / Space / Defense”, sectorColor:”#6366f1”, price:”~$26”, marketCap:”~$12B”,
+thesis:“Only credible SpaceX alternative. Q4 Rev $180M (+36%). $1.85B backlog. US Space Force $816M contract. Neutron rocket Q4 2026 = 10x catalyst competing with Falcon 9. Morgan Stanley Overweight.”,
+metrics:”$180M Q4 Rev · $1.85B backlog · Analyst target $35–$40”, signal:“Add aggressively on dips. Neutron is the re-rating event.” },
+{ rank:3,  ticker:“IONQ”, name:“IonQ”,                    tier:“ADD”,      conviction:8,  underPrice20:false,
+sector:“Quantum Computing / Deep Tech”, sectorColor:”#ec4899”, price:”~$30”, marketCap:”~$7B”,
+thesis:“Best-in-class trapped-ion quantum. Rev +222% YoY. $3.5B cash, zero debt. 256-qubit system shipping 2026. BlackRock owns 24M shares. If quantum delivers 20% of $1T potential: 10–30x.”,
+metrics:“Rev +222% YoY · $3.5B cash · FY2025 Rev $106M · Analyst avg $75”, signal:“Add at ~$30. 3–4% max.”, maxPosition:“3–4%” },
+{ rank:4,  ticker:“CVX”,  name:“Chevron”,                 tier:“FOREVER”,  conviction:9,  underPrice20:false,
+sector:“Energy / Oil & Gas Major”, sectorColor:”#f59e0b”, price:”~$155”, marketCap:”~$270B”,
+thesis:“38 consecutive years of dividend increases. 4.5% yield. FCF $16.5B. Production +11% post-Hess. Guyana offshore = multi-decade growth. Geopolitical oil premium.”,
+metrics:“Div yield 4.5% · FCF $16.5B · Production 3.72M boe/d · 38yr streak”, signal:“Add now. Forever oil + dividend hold.” },
+{ rank:5,  ticker:“HOOD”, name:“Robinhood Markets”,       tier:“ADD”,      conviction:8,  underPrice20:false,
+sector:“Fintech / Trading / Crypto”, sectorColor:”#10b981”, price:”~$50”, marketCap:”~$43B”,
+thesis:“Down from $153 ATH — overreaction. 27M customers. $324B AUM. 11 business lines each $100M+ revenue. Prediction markets growing. Private markets fund IPO imminent. 19/25 analysts Strong Buy.”,
+metrics:”$324B AUM · 27M customers · EPS $0.66 · Analyst target $65–$80”, signal:“Buy aggressively. Target +50% over 12–18 months.” },
+{ rank:6,  ticker:“NNE”,  name:“NANO Nuclear Energy”,     tier:“ADD”,      conviction:8,  underPrice20:false,
+sector:“Nuclear Energy / Micro-Modular Reactors”, sectorColor:”#f97316”, price:”~$25”, marketCap:”~$2B”,
+thesis:“UAE AI data center deal signed. 4 reactor designs: Kronos, Zeus, Loki, Odin. $577M cash. Revenue projected $4B by FY2037 (73% CAGR). AI data center power demand is the killer use case.”,
+metrics:”$577M cash · 4 reactor designs · UAE deal · Analyst target $45”, signal:“Buy under $28. Best micro-nuclear play.” },
+{ rank:7,  ticker:“PL”,   name:“Planet Labs”,             tier:“ADD”,      conviction:8,  underPrice20:false,
+sector:“Space / Geospatial Analytics / Defense”, sectorColor:”#6366f1”, price:”~$4”, marketCap:”~$1.4B”,
+thesis:“Earth imaging from space with AI analytics. Backlog +216% to $734M. Swedish Armed Forces deal. AXA insurance partnership. Defense/government = recurring revenue anchor.”,
+metrics:“Rev +33% YoY · Backlog +216% to $734M · Target $5–$6”, signal:“Add under $5. Defense + climate intelligence.” },
+{ rank:8,  ticker:“GLD”,  name:“SPDR Gold ETF”,           tier:“FOREVER”,  conviction:9,  underPrice20:false,
+sector:“Commodities / Precious Metals / Safe Haven”, sectorColor:”#f59e0b”, price:”~$285”, marketCap:“ETF”,
+thesis:“Gold +60% in 2025. Central banks buying 585T/quarter. Geopolitical fragmentation + deficit spending = structurally bullish. Not a trade — permanent 5–8% portfolio allocation.”,
+metrics:“60%+ gain 2025 · Central bank demand record · Inflation hedge”, signal:“Hold 5–8% permanently. Never fully exit.” },
+{ rank:9,  ticker:“LMD”,  name:“Landmark Infrastructure”, tier:“ADD”,      conviction:7,  underPrice20:true,
+sector:“Infrastructure / Wireless Towers / Real Estate”, sectorColor:”#10b981”, price:”~$14”, marketCap:”~$0.5B”,
+thesis:“Owner of wireless tower ground leases + billboard/telecom infrastructure. 5G rollout + rural broadband = structural demand. Inflation-protected revenue from AT&T, T-Mobile, Verizon. Real asset with recurring cash flows. ASTS complement.”,
+metrics:“~5–6% yield · Long-term telecom leases · 5G tailwind · Inflation escalators”, signal:“Add under $15. Infrastructure income play. Pairs with ASTS.” },
+{ rank:10, ticker:“QBTS”, name:“D-Wave Quantum”,          tier:“WATCHLIST”,conviction:6,  underPrice20:true,
+sector:“Quantum Computing / Optimization”, sectorColor:”#ec4899”, price:”~$8”, marketCap:”~$2B”,
+thesis:“Only pure-play commercial quantum with 100+ production workloads running today. Annealing solves optimization NOW. Jefferies target $45. Good IONQ complement.”,
+metrics:“Rev +100% YoY · 100+ enterprise customers · $1B cash · Target $40–$45”, signal:“Layer in under $10. ~2% alongside IONQ.”, maxPosition:“~2%” },
+{ rank:11, ticker:“STM”,  name:“STMicroelectronics”,      tier:“WATCHLIST”,conviction:6,  underPrice20:true,
+sector:“Semiconductors / Auto / IoT / Power”, sectorColor:”#8b5cf6”, price:”~$20”, marketCap:”~$18B”,
+thesis:“Key chips in every EV, IoT device, industrial robot. Near 52-wk lows. P/E <10x. Robotics wave = 2–3x. Dividend >4% gives a floor.”,
+metrics:“P/E <10x · Div yield 4%+ · EV + robotics exposure · ~$18B mkt cap”, signal:“Watch for entry under $18. Robotics wave play.” },
+];
+
+const EXISTING_STOCKS = [
+{ ticker:“AMZN”, name:“Amazon”,              tier:“FOREVER”,  conviction:10, sector:“Technology / E-Commerce / Cloud”,          sectorColor:”#3b82f6”, price:”~$200”, marketCap:”$2.1T”,
+why:“AWS + advertising flywheel. Owns the cloud layer AI runs on. FCF expanding rapidly. Never-ending reinvestment engine.”, metrics:“AWS $108B+ rev · Advertising $56B · FCF $80B+ TTM” },
+{ ticker:“META”, name:“Meta Platforms”,       tier:“FOREVER”,  conviction:10, sector:“Technology / Social Media / AI”,            sectorColor:”#3b82f6”, price:”~$620”, marketCap:”$1.57T”,
+why:“3B+ DAUs. Best ad-targeting engine on earth. AI infrastructure paying off. Year-of-efficiency is structural.”, metrics:“Rev +21% YoY · FCF $52B TTM · P/FCF ~30x” },
+{ ticker:“TSM”,  name:“Taiwan Semiconductor”, tier:“FOREVER”,  conviction:10, sector:“Semiconductors / Foundry”,                  sectorColor:”#8b5cf6”, price:”~$175”, marketCap:”$905B”,
+why:“Monopoly on bleeding-edge chips. Every AI company needs TSM. Arizona/Japan fabs reduce geo-risk.”, metrics:“Rev +39% YoY · CoWoS sold out · Fwd P/E ~21x” },
+{ ticker:“SHOP”, name:“Shopify”,              tier:“FOREVER”,  conviction:9,  sector:“Technology / E-Commerce / SaaS”,            sectorColor:”#3b82f6”, price:”~$135”, marketCap:”$114B”,
+why:“Global commerce OS. Software-only post-logistics. AI deepening merchant lock-in. $2B buyback.”, metrics:“GMV $300B+ · Rev +31% · FCF margin ~18%” },
+{ ticker:“KMI”,  name:“Kinder Morgan”,        tier:“FOREVER”,  conviction:8,  sector:“Energy / Midstream Infrastructure”,         sectorColor:”#f59e0b”, price:”~$32”,  marketCap:”$70B”,
+why:“79K miles of irreplaceable pipelines. AI data center boom = nat gas supercycle. 9th consecutive dividend hike.”, metrics:“Div 3.7% · EBITDA $8.7B FY2026E · BofA target $39” },
+{ ticker:“GRAB”, name:“Grab Holdings”,        tier:“ADD”,      conviction:9,  sector:“Technology / Superapp / Fintech SE Asia”,  sectorColor:”#10b981”, price:”~$4.10”,marketCap:”$16.8B”,
+why:“SE Asia superapp. First profitable year FY2025. $5.4B net cash = 32% of stock price. 2028 FCF implies ~10x EV/FCF today.”,
+metrics:“Rev +20% · EBITDA +60% · PEG 0.94 · Net cash $5.4B”, signal:“Add aggressively. Biggest near-term value gap.” },
+{ ticker:“PANW”, name:“Palo Alto Networks”,   tier:“HOLD”,     conviction:7,  sector:“Technology / Cybersecurity / SaaS”,        sectorColor:”#3b82f6”, price:”~$159”, marketCap:”$129B”,
+why:“Best-in-class cybersecurity platform. $15.8B RPO = 2+ yrs visibility. FY2026 FCF ~$4B. Rule-of-50 for 5th year. ~25% above base DCF fair value.”,
+metrics:“EV/FCF 36x · RPO $15.8B · NGS ARR $5.6B +32% · FCF margin 37.5%”,
+signal:“Hold full position. Add only on pullback to $120–130.”,
+note:“🔐 Cybersecurity is non-discretionary. PANW is the platform leader. Hold through valuation compression.” },
+{ ticker:“UUUU”, name:“Energy Fuels”,         tier:“ADD”,      conviction:8,  sector:“Energy / Uranium / Critical Minerals”,     sectorColor:”#f59e0b”, price:”~$22”,  marketCap:”$2.5B”,
+why:“Only conventional uranium mill in US. REE pivot: $3.7B NPV NdPr/Dy/Tb. Dual critical mineral play with massive policy tailwinds.”,
+metrics:“U production 1.5–2.5M lbs · Working capital $927M · REE imminent”, signal:“Add under $25. Critical minerals supercycle.” },
+{ ticker:“ASTS”, name:“AST SpaceMobile”,      tier:“ADD”,      conviction:7,  sector:“Technology / Space / Telecom”,             sectorColor:”#6366f1”, price:”~$20”,  marketCap:”$9B”,
+why:“Eliminating dead zones from space using ordinary phones. AT&T/Verizon/Vodafone locked in. Rev +2731% YoY Q4. 45–60 Block 2 sats launching 2026. If this works: $50B+ company.”,
+metrics:“Q4 Rev $54M +2731% · Carrier partnerships locked · 45–60 sats 2026”, maxPosition:“3–4%” },
+{ ticker:“RXRX”, name:“Recursion Pharma”,     tier:“HOLD”,     conviction:5,  sector:“Biotech / AI Drug Discovery”,              sectorColor:”#ec4899”, price:”~$3.60”,marketCap:”$1.5B”,
+why:“AI-native drug discovery with proprietary 50PB biological dataset. NVIDIA partnership. If pipeline works: 10–20x. Dataset alone has strategic value.”,
+metrics:“NVIDIA backed · ~50PB phenomics · REC-4881, REC-617 pipeline”, maxPosition:“2–3%” },
+{ ticker:“BTBT”, name:“Bit Digital”,          tier:“HOLD”,     conviction:4,  sector:“Technology / AI Cloud / Crypto Mining”,    sectorColor:”#6366f1”, price:”~$2.40”,marketCap:”$0.4B”,
+why:“Smart pivot from crypto mining to AI GPU cloud. ETH staking floor. 3–5x if AI cloud revenue becomes dominant.”,
+metrics:“Analyst target $6 · GPU cluster growing · ETH staking yield”, maxPosition:“2%” },
+{ ticker:“DVS”,  name:“Dolly Varden Silver”,  tier:“HOLD”,     conviction:5,  sector:“Materials / Silver Mining / Precious Metals”,sectorColor:”#94a3b8”,price:”~$1.20”,marketCap:”~$0.3B”,
+why:“High-grade silver + gold in BC’s Golden Triangle. Silver = industrial (solar/EVs/AI) + monetary dual demand. Junior miners leveraged 3–5x to silver price.”,
+metrics:“Golden Triangle BC · High-grade Ag+Au · Pre-production · Silver spot leveraged”, maxPosition:“2–3%” },
+{ ticker:“TAOX”, name:“TAOX / TAO Treasury”,  tier:“PATIENCE”, conviction:5,  sector:“DeFi / Decentralized AI / Crypto Treasury”,sectorColor:”#a78bfa”, price:”—”,     marketCap:“micro-cap”,
+why:“Treasury company holding staked TAO in Bittensor subnets. As TAO rises, NAV rises — MSTR/BTC analogy. Subnet yield accrual on top of NAV appreciation. Decentralized AI is real — Nvidia has validated it.”,
+metrics:“TAO staked in Bittensor subnets · NAV tracks TAO · Subnet yield accrual”, maxPosition:“2–3%”,
+note:“⚠️ Premium to NAV can collapse fast. Liquidity thin. Track TAO price + subnet APY.” },
+{ ticker:“CHPT”, name:“ChargePoint”,          tier:“PATIENCE”, conviction:2,  sector:“Clean Energy / EV Charging”,               sectorColor:”#ef4444”, price:”~$1.10”,marketCap:”$0.5B”,
+why:“363K+ port network has residual value. Subscription revenue +15%. Hold only for a bounce to minimize losses.”,
+metrics:“63% bankruptcy probability · Cash burn $200M+/yr · Rev declining”, maxPosition:“Hold to minimize losses”,
+note:“⚠️ Exit on any 20–30% bounce. Do not average down.” },
+{ ticker:“NRDY”, name:“Nerdy Inc.”,           tier:“PATIENCE”, conviction:2,  sector:“EdTech / Online Tutoring”,                 sectorColor:”#ef4444”, price:”~$2”,   marketCap:“tiny”,
+why:“AI tutoring from ChatGPT/Claude/Khanmigo vaporizing the paid model. Revenue declining. No moat vs free AI.”,
+metrics:“Revenue declining · AI displacement · No moat”, maxPosition:“Hold to minimize losses”,
+note:“⚠️ Exit on any meaningful bounce. No long-term path.” },
+{ ticker:“FSLY”, name:“Fastly”,               tier:“PATIENCE”, conviction:3,  sector:“Technology / CDN / Edge”,                  sectorColor:”#f97316”, price:”~$6”,   marketCap:”$1.9B”,
+why:“CDN with edge AI inference optionality. Already took out initial stake — letting rest ride as house money.”,
+metrics:“Cloudflare winning · Anemic growth · Edge AI optionality”,
+note:“Already de-risked. House money rides. Exit if it hits $9–$10.” },
+{ ticker:“PATH”, name:“UiPath”,               tier:“PATIENCE”, conviction:6,  sector:“Technology / RPA / Agentic AI”,            sectorColor:”#f97316”, price:”~$11”,  marketCap:”$6.5B”,
+why:“REVISED: Agentic AI pivot is real. #1 OSWorld benchmark. WorkFusion adds financial crime AI. Partnerships: Microsoft, OpenAI, Nvidia, Snowflake. Robotics wave = RPA + agentic AI orchestrates physical robots.”,
+metrics:“ARR +11% · Gross margin 83% · Analyst target $15.93”,
+note:“Hold at $13 avg. Could re-rate to $20 on agentic acceleration. Robotics wave underrated.” },
+];
+
+const CLAUDE_PICKS = [
+{ ticker:“OKLO”, name:“Oklo”,               price:”~$40”, sector:“Nuclear Energy / SMR”,               sectorColor:”#f97316”, conviction:8,
+why:“Sam Altman-backed next-gen nuclear. 14 LOIs including Switch (data centers). Aurora 15MW reactor targeting NRC approval. AI data center power crisis is the catalyst.”,
+signal:“Buy under $35. Pair with NNE.” },
+{ ticker:“WULF”, name:“TeraWulf”,           price:”~$5”,  sector:“Nuclear + Bitcoin Mining”,           sectorColor:”#f59e0b”, conviction:7,
+why:“Bitcoin mining powered by nuclear energy (Susquehanna). Zero-carbon crypto mining with permanent nuclear cost advantage. BTC proxy.”,
+signal:“Buy under $5. BTC proxy + clean energy hybrid. Swap for CHPT.” },
+{ ticker:“SOUN”, name:“SoundHound AI”,      price:”~$8”,  sector:“AI / Voice / Automotive”,            sectorColor:”#a78bfa”, conviction:6,
+why:“Nvidia-backed voice AI for automotive, restaurants, healthcare. 10x revenue growth potential. Sticky OEM relationships.”,
+signal:“Max 2% position. Under $8 is interesting. Swap for NRDY.” },
+{ ticker:“JOBY”, name:“Joby Aviation”,      price:”~$8”,  sector:“Transportation / eVTOL / Air Taxi”,  sectorColor:”#10b981”, conviction:6,
+why:“Toyota + Delta + DoD backed. FAA type certificate expected 2026. Air taxi TAM enormous. $5.1B cash runway.”,
+signal:“Speculative 2% position. Watch FAA certification.” },
+{ ticker:“ARRY”, name:“Array Technologies”, price:”~$8”,  sector:“Clean Energy / Solar Tracking”,      sectorColor:”#34d399”, conviction:7,
+why:“Solar tracker manufacturer. AI data center power buildout driving unprecedented utility-scale solar demand.”,
+signal:“Add under $9. Solar infrastructure on AI power demand. Swap for FSLY.” },
+{ ticker:“MSTR”, name:“Strategy (MicroStrategy)”, price:”~$300”, sector:“Bitcoin Treasury Company”,   sectorColor:”#f59e0b”, conviction:7,
+why:“Original corporate BTC treasury — proves the TAOX model works at scale. 2x–3x BTC amplification. Institutional liquidity.”,
+signal:“Treat as 2–3% asymmetric. Swap for TAOX if TAO thesis weakens.” },
+];
+
+const SWAPS = [
+{ out:“CHPT”,      into:“WULF”,  reason:“Swap dying EV charging for nuclear BTC mining — both risk-on, WULF has structural cost advantage.” },
+{ out:“NRDY”,      into:“SOUN”,  reason:“Swap disrupted tutoring for Nvidia-backed voice AI. SOUN has real growth vectors.” },
+{ out:“TAOX”,      into:“MSTR”,  reason:“MSTR is the proven crypto treasury model. TAOX has more asymmetry but much higher execution risk.” },
+{ out:“FSLY”,      into:“ARRY”,  reason:“Swap CDN ice cube for solar tracker. AI power demand is ARRY’s tailwind. Already de-risked FSLY.” },
+{ out:“STM watch”, into:“RKLB”,  reason:“RKLB has near-term catalysts (Neutron) and locked defense contracts over STM.” },
+];
+
+// All unique tickers
+const ALL_TICKERS_SET = new Set([
+…EXISTING_STOCKS.map(s=>s.ticker),
+…PRIORITY_CANDIDATES.map(s=>s.ticker),
+…CLAUDE_PICKS.map(s=>s.ticker),
+]);
+const TOTAL_POSITIONS = ALL_TICKERS_SET.size;
+const ALL_TICKERS = […ALL_TICKERS_SET];
+
+// ─── MARKET SESSION ──────────────────────────────────────────────────────────
+function getMarketSession() {
+const now = new Date();
+const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+// Try to detect DST for ET
+const janOffset = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+const julOffset = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+const isDST = Math.min(janOffset, julOffset) === now.getTimezoneOffset();
+const etOffset = isDST ? -4 : -5;
+const et = new Date(utc + 3600000 * etOffset);
+const h = et.getHours(), m = et.getMinutes(), day = et.getDay();
+const mins = h * 60 + m;
+if (day === 0 || day === 6) return { label:“Weekend”,      color:”#6b7280”, dot:”#6b7280”, live:false };
+if (mins >= 240 && mins < 570)  return { label:“Pre-Market”,  color:”#fbbf24”, dot:”#fbbf24”, live:true  };
+if (mins >= 570 && mins < 960)  return { label:“Market Open”, color:”#22c55e”, dot:”#22c55e”, live:true  };
+if (mins >= 960 && mins < 1200) return { label:“After Hours”, color:”#a78bfa”, dot:”#a78bfa”, live:true  };
+return { label:“Market Closed”, color:”#6b7280”, dot:”#6b7280”, live:false };
+}
+
+// ─── PRICE FETCH ─────────────────────────────────────────────────────────────
+async function fetchLivePrices(tickers, onProgress) {
+const results = {};
+const chunkSize = 8;
+const chunks = [];
+for (let i = 0; i < tickers.length; i += chunkSize) chunks.push(tickers.slice(i, i + chunkSize));
+for (let ci = 0; ci < chunks.length; ci++) {
+onProgress && onProgress(Math.round((ci / chunks.length) * 90));
+try {
+const resp = await fetch(“https://api.anthropic.com/v1/messages”, {
+method:“POST”, headers:{“Content-Type”:“application/json”},
+body: JSON.stringify({
+model:“claude-sonnet-4-20250514”, max_tokens:1000,
+tools:[{ type:“web_search_20250305”, name:“web_search” }],
+system:`Financial data assistant. Search current stock prices including pre/after-market. Return ONLY raw JSON — no markdown, no explanation: {"TICKER":{"price":123.45,"change":-1.23,"changePct":-0.98,"session":"market"},...} session values: "pre-market","market","after-hours","closed". Return ONLY the JSON object.`,
+messages:[{ role:“user”, content:`Current prices (include pre/after-market) for: ${chunks[ci].join(", ")}` }]
+})
+});
+const data = await resp.json();
+const text = (data.content||[]).filter(b=>b.type===“text”).map(b=>b.text).join(””);
+const match = text.match(/{[\s\S]*}/);
+if (match) { try { Object.assign(results, JSON.parse(match[0])); } catch(e){} }
+} catch(e) { console.warn(“Fetch error chunk”, ci); }
+if (ci < chunks.length - 1) await new Promise(r => setTimeout(r, 350));
+}
+onProgress && onProgress(100);
+return results;
+}
+
+// ─── COMPONENTS ──────────────────────────────────────────────────────────────
+function Dots({ n }) {
+return (
+<div style={{ display:“flex”, gap:3 }}>
+{[…Array(10)].map((_,i) => (
+<div key={i} style={{ width:6, height:6, borderRadius:“50%”,
+background: i < n ? “#a78bfa” : “rgba(255,255,255,0.1)” }} />
+))}
+</div>
+);
+}
+
+function TierBadge({ tier }) {
+const t = TIERS[tier]; if (!t) return null;
+return (
+<span style={{ background:t.bg, border:`1px solid ${t.border}`, borderRadius:6, padding:“3px 8px”,
+color:t.color, fontSize:10, fontWeight:700, whiteSpace:“nowrap” }}>
+{t.emoji} {t.label}
+</span>
+);
+}
+
+function LivePrice({ ticker, priceData, loading }) {
+if (loading) return (
+<div style={{ display:“flex”, flexDirection:“column”, alignItems:“flex-end”, gap:3 }}>
+<div className=“skeleton” style={{ width:56, height:15 }} />
+<div className=“skeleton” style={{ width:44, height:11 }} />
+</div>
+);
+const d = priceData?.[ticker];
+if (!d?.price) return <span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, color:”#374151”, fontSize:11 }}>—</span>;
+const up = d.change > 0, dn = d.change < 0;
+const cls = up ? “price-up” : dn ? “price-down” : “price-flat”;
+const arrow = up ? “▲” : dn ? “▼” : “—”;
+const sess = d.session && d.session !== “market”
+? <span style={{ fontSize:8, color:”#6b7280”, fontFamily:”‘IBM Plex Mono’,monospace” }}> {d.session}</span> : null;
+return (
+<div style={{ textAlign:“right” }}>
+<div style={{ fontFamily:”‘IBM Plex Mono’,monospace”, color:”#f9fafb”, fontSize:14, fontWeight:800 }}>
+${d.price.toFixed(2)}{sess}
+</div>
+<div className={cls} style={{ fontFamily:”‘IBM Plex Mono’,monospace”, fontSize:10, fontWeight:600 }}>
+{arrow} {up?”+”:””}{d.change?.toFixed(2)} ({up?”+”:””}{d.changePct?.toFixed(2)}%)
+</div>
+</div>
+);
+}
+
+function StockCard({ s, priceData, loading, expanded, setExpanded }) {
+const t = TIERS[s.tier] || TIERS.HOLD;
+const isOpen = expanded === s.ticker;
+const thesis = s.why || s.thesis || “”;
+return (
+<div className={`card ${isOpen ? "open" : ""}`}
+style={{ background: isOpen ? t.bg : “rgba(255,255,255,0.025)”, borderColor: isOpen ? t.border : “rgba(255,255,255,0.07)” }}>
+<div className=“card-header” onClick={() => setExpanded(isOpen ? null : s.ticker)}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:8 }}>
+<div style={{ flex:1, minWidth:0 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:7, marginBottom:3, flexWrap:“wrap” }}>
+<span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, fontWeight:800, fontSize:15, color:”#f9fafb” }}>{s.ticker}</span>
+<span style={{ color:”#9ca3af”, fontSize:12, overflow:“hidden”, textOverflow:“ellipsis”, whiteSpace:“nowrap”, maxWidth:130 }}>{s.name}</span>
+{s.rank && <span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, color:”#4b5563”, fontSize:9, fontWeight:700 }}>#{s.rank}</span>}
+</div>
+<div style={{ display:“flex”, alignItems:“center”, gap:6, marginBottom:5 }}>
+<span style={{ background:`${s.sectorColor}20`, border:`1px solid ${s.sectorColor}40`, color:s.sectorColor,
+borderRadius:4, padding:“1px 6px”, fontSize:9.5, fontWeight:600 }}>
+{(s.sector||””).split(” / “)[0]}
+</span>
+{s.underPrice20 && (
+<span style={{ background:“rgba(52,211,153,0.15)”, border:“1px solid rgba(52,211,153,0.3)”, color:”#34d399”,
+borderRadius:4, padding:“1px 5px”, fontSize:9 }}>Under $20</span>
+)}
+</div>
+<Dots n={s.conviction} />
+</div>
+<div style={{ display:“flex”, flexDirection:“column”, alignItems:“flex-end”, gap:5, flexShrink:0 }}>
+<LivePrice ticker={s.ticker} priceData={priceData} loading={loading} />
+<TierBadge tier={s.tier} />
+</div>
+</div>
+{/* Chevron */}
+<div style={{ textAlign:“center”, marginTop:4, color:”#374151”, fontSize:10, lineHeight:1 }}>
+{isOpen ? “▲” : “▼”}
+</div>
+</div>
+
+```
+  {isOpen && (
+    <div className="card-body slide-up">
+      <div style={{ color:"#6b7280", fontSize:10, marginBottom:8, fontFamily:"'IBM Plex Mono',monospace" }}>{s.sector}</div>
+      {/* Thesis */}
+      <div className="metric-box">
+        <div className="metric-label">Thesis</div>
+        <div style={{ color:"#d1d5db", fontSize:12, lineHeight:1.7 }}>{thesis}</div>
+      </div>
+      {/* Metrics */}
+      {(s.metrics) && (
+        <div style={{ background:"rgba(59,130,246,0.05)", border:"1px solid rgba(59,130,246,0.15)", borderRadius:8, padding:"9px 11px", marginBottom:7 }}>
+          <div className="metric-label">Key Metrics</div>
+          <div style={{ color:"#93c5fd", fontSize:11, fontFamily:"'IBM Plex Mono',monospace", lineHeight:1.75 }}>{s.metrics}</div>
+        </div>
+      )}
+      {/* Signal / Note */}
+      {(s.signal || s.note) && (
+        <div style={{ background:t.bg, border:`1px solid ${t.border}`, borderRadius:8, padding:"8px 11px", fontSize:12, color:t.color, marginBottom:7 }}>
+          {s.signal && <div><strong>Signal:</strong> {s.signal}</div>}
+          {s.note   && <div style={{ marginTop:s.signal?5:0, opacity:0.9 }}>{s.note}</div>}
+        </div>
+      )}
+      {/* Max position */}
+      {s.maxPosition && (
+        <div style={{ background:"rgba(245,158,11,0.07)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:8, padding:"7px 11px", color:"#fbbf24", fontSize:11 }}>
+          ⚠️ Max position: <strong>{s.maxPosition}</strong>
+        </div>
+      )}
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+function ClaudeCard({ s, priceData, loading }) {
+const [open, setOpen] = useState(false);
+return (
+<div className={`card ${open ? "open" : ""}`}
+style={{ background: open ? “rgba(96,165,250,0.06)” : “rgba(255,255,255,0.025)”, borderColor: open ? “rgba(96,165,250,0.25)” : “rgba(255,255,255,0.07)” }}>
+<div className=“card-header” onClick={() => setOpen(!open)}>
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:8 }}>
+<div style={{ flex:1, minWidth:0 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:7, marginBottom:3, flexWrap:“wrap” }}>
+<span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, fontWeight:800, fontSize:15, color:”#f9fafb” }}>{s.ticker}</span>
+<span style={{ color:”#9ca3af”, fontSize:12 }}>{s.name}</span>
+<span style={{ background:“rgba(96,165,250,0.12)”, border:“1px solid rgba(96,165,250,0.3)”, color:”#60a5fa”,
+borderRadius:4, padding:“1px 6px”, fontSize:9, fontWeight:700 }}>Claude Pick</span>
+</div>
+<div style={{ display:“flex”, alignItems:“center”, gap:6, marginBottom:5 }}>
+<span style={{ background:`${s.sectorColor}20`, border:`1px solid ${s.sectorColor}40`, color:s.sectorColor,
+borderRadius:4, padding:“1px 6px”, fontSize:9.5, fontWeight:600 }}>{s.sector.split(” / “)[0]}</span>
+</div>
+<Dots n={s.conviction} />
+</div>
+<div style={{ display:“flex”, flexDirection:“column”, alignItems:“flex-end”, gap:5, flexShrink:0 }}>
+<LivePrice ticker={s.ticker} priceData={priceData} loading={loading} />
+<span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, color:”#374151”, fontSize:9 }}>ref {s.price}</span>
+</div>
+</div>
+<div style={{ textAlign:“center”, marginTop:4, color:”#374151”, fontSize:10, lineHeight:1 }}>{open ? “▲” : “▼”}</div>
+</div>
+{open && (
+<div className="card-body slide-up">
+<div className="metric-box">
+<div className="metric-label">Thesis</div>
+<div style={{ color:”#d1d5db”, fontSize:12, lineHeight:1.7 }}>{s.why}</div>
+</div>
+<div style={{ background:“rgba(96,165,250,0.07)”, border:“1px solid rgba(96,165,250,0.2)”, borderRadius:8, padding:“8px 11px”, color:”#60a5fa”, fontSize:12 }}>
+<strong>Signal:</strong> {s.signal}
+</div>
+</div>
+)}
+</div>
+);
+}
+
+// ─── TAB CONTENT ─────────────────────────────────────────────────────────────
+function TabBanner({ color, children }) {
+return (
+<div style={{ background:`${color}09`, border:`1px solid ${color}25`, borderRadius:10,
+padding:“10px 13px”, marginBottom:12, color, fontSize:12, lineHeight:1.6 }}>
+{children}
+</div>
+);
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function App() {
+const [tab, setTab]         = useState(“priority”);
+const [expanded, setExpanded] = useState(null);
+const [priceData, setPriceData] = useState({});
+const [loading, setLoading] = useState(false);
+const [progress, setProgress] = useState(0);
+const [lastUpdated, setLastUpdated] = useState(null);
+const [session, setSession] = useState(getMarketSession());
+const contentRef = useRef(null);
+
+useEffect(() => {
+const t = setInterval(() => setSession(getMarketSession()), 30000);
+return () => clearInterval(t);
+}, []);
+
+const loadPrices = useCallback(async () => {
+setLoading(true); setProgress(0);
+try {
+const data = await fetchLivePrices(ALL_TICKERS, setProgress);
+setPriceData(data); setLastUpdated(new Date());
+} finally { setLoading(false); setProgress(0); }
+}, []);
+
+useEffect(() => { loadPrices(); }, []);
+
+useEffect(() => {
+if (!session.live) return;
+const iv = setInterval(loadPrices, 5 * 60 * 1000);
+return () => clearInterval(iv);
+}, [session.live, loadPrices]);
+
+// Scroll to top on tab change
+useEffect(() => {
+if (contentRef.current) contentRef.current.scrollTop = 0;
+}, [tab]);
+
+const props = { priceData, loading, expanded, setExpanded };
+
+const foreverStocks  = […EXISTING_STOCKS.filter(s=>s.tier===“FOREVER”), …PRIORITY_CANDIDATES.filter(p=>p.tier===“FOREVER”)];
+const addStocks      = […EXISTING_STOCKS.filter(s=>s.tier===“ADD”),     …PRIORITY_CANDIDATES.filter(p=>p.tier===“ADD”)];
+const patienceStocks = EXISTING_STOCKS.filter(s=>s.tier===“PATIENCE”);
+const watchStocks    = PRIORITY_CANDIDATES.filter(p=>p.tier===“WATCHLIST”);
+
+// Movers
+const allPriced = […EXISTING_STOCKS, …PRIORITY_CANDIDATES]
+.filter(s => priceData[s.ticker]?.changePct != null)
+.sort((a,b) => (priceData[b.ticker]?.changePct||0) - (priceData[a.ticker]?.changePct||0));
+const topGainer = allPriced[0];
+const topLoser  = allPriced[allPriced.length-1];
+
+const TABS = [
+{ id:“priority”,  label:“Priority”, icon:“🎯” },
+{ id:“forever”,   label:“Forever”,  icon:“💎” },
+{ id:“add”,       label:“Add”,      icon:“🚀” },
+{ id:“patience”,  label:“Patience”, icon:“⏳” },
+{ id:“watchlist”, label:“Watch”,    icon:“👀” },
+{ id:“suggest”,   label:“Claude”,   icon:“✨” },
+{ id:“research”,  label:“Research”, icon:“📚” },
+];
+
+return (
+<div id="app">
+{/* ── HEADER ── */}
+<div className="header">
+<div style={{ display:“flex”, justifyContent:“space-between”, alignItems:“flex-start”, gap:8 }}>
+<div style={{ flex:1, minWidth:0 }}>
+<div style={{ display:“flex”, alignItems:“center”, gap:8, marginBottom:4, flexWrap:“wrap” }}>
+<div style={{ background:“linear-gradient(135deg,#7c3aed,#2563eb)”, borderRadius:7, padding:“4px 10px”,
+fontSize:11, fontWeight:700, letterSpacing:“0.07em”, color:”#fff”, whiteSpace:“nowrap” }}>
+PORTFOLIO ATLAS
+</div>
+{/* Session badge */}
+<span style={{ display:“inline-flex”, alignItems:“center”, gap:4,
+background:`${session.dot}15`, border:`1px solid ${session.dot}35`, borderRadius:20, padding:“2px 8px” }}>
+<span style={{ width:5, height:5, borderRadius:“50%”, background:session.dot, display:“inline-block”,
+animation: session.live ? “pulse 1.8s ease-in-out infinite” : “none” }} />
+<span style={{ color:session.color, fontSize:9.5, fontWeight:700 }}>{session.label}</span>
+</span>
+</div>
+<div style={{ fontSize:16, fontWeight:800, lineHeight:1.25, marginBottom:2 }}>Forever Portfolio</div>
+<div style={{ color:”#6b7280”, fontSize:11 }}>
+{TOTAL_POSITIONS} stocks tracked · March 2026
+{lastUpdated && (
+<span style={{ marginLeft:8, display:“inline-flex”, alignItems:“center”, gap:4 }}>
+<span className=“live-dot” style={{ width:5, height:5 }}/>
+<span style={{ fontFamily:”‘IBM Plex Mono’,monospace”, fontSize:9 }}>{lastUpdated.toLocaleTimeString()}</span>
+</span>
+)}
+</div>
+</div>
+<button className=“refresh-btn” onClick={loadPrices} disabled={loading} style={{ flexShrink:0 }}>
+{loading ? <><span className="spinner"/><span>{progress}%</span></> : <><span style={{ fontSize:14 }}>↻</span></>}
+</button>
+</div>
+
+```
+    {/* Progress bar */}
+    {loading && (
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width:`${progress}%` }} />
+      </div>
+    )}
+
+    {/* Movers strip */}
+    {(topGainer || topLoser) && (
+      <div className="movers-strip">
+        {topGainer && (
+          <div className="mover-chip" style={{ background:"rgba(34,197,94,0.07)", border:"1px solid rgba(34,197,94,0.2)" }}>
+            <span style={{ color:"#6b7280", fontSize:9, textTransform:"uppercase" }}>Top</span>
+            <span style={{ fontFamily:"'IBM Plex Mono',monospace", color:"#f9fafb", fontSize:11, fontWeight:700 }}>{topGainer.ticker}</span>
+            <span className="price-up" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10 }}>+{priceData[topGainer.ticker]?.changePct?.toFixed(2)}%</span>
+          </div>
+        )}
+        {topLoser && (
+          <div className="mover-chip" style={{ background:"rgba(248,113,113,0.07)", border:"1px solid rgba(248,113,113,0.2)" }}>
+            <span style={{ color:"#6b7280", fontSize:9, textTransform:"uppercase" }}>Low</span>
+            <span style={{ fontFamily:"'IBM Plex Mono',monospace", color:"#f9fafb", fontSize:11, fontWeight:700 }}>{topLoser.ticker}</span>
+            <span className="price-down" style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10 }}>{priceData[topLoser.ticker]?.changePct?.toFixed(2)}%</span>
+          </div>
+        )}
+        <div className="mover-chip" style={{ background:"rgba(167,139,250,0.07)", border:"1px solid rgba(167,139,250,0.18)" }}>
+          <span style={{ color:"#6b7280", fontSize:9, textTransform:"uppercase" }}>Positions</span>
+          <span style={{ fontFamily:"'IBM Plex Mono',monospace", color:"#a78bfa", fontSize:11, fontWeight:700 }}>{TOTAL_POSITIONS}</span>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* ── CONTENT ── */}
+  <div className="content" ref={contentRef}>
+
+    {/* PRIORITY TAB */}
+    {tab === "priority" && (
+      <div className="slide-up">
+        <div style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.12),rgba(37,99,235,0.08))",
+          border:"1px solid rgba(124,58,237,0.3)", borderRadius:12, padding:"13px 14px", marginBottom:12 }}>
+          <div style={{ fontSize:10, color:"#a78bfa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:5 }}>New Entrant Priority Ranking</div>
+          <div style={{ color:"#d1d5db", fontSize:12, lineHeight:1.6 }}>All new tickers ranked by priority. Includes LMD, PANW, and all additions. Sub-$20 tagged. Tap any card to expand.</div>
+        </div>
+        {PRIORITY_CANDIDATES.map(s => <StockCard key={s.ticker} s={s} {...props} />)}
+      </div>
+    )}
+
+    {/* FOREVER TAB */}
+    {tab === "forever" && (
+      <div className="slide-up">
+        <TabBanner color="#a78bfa">
+          💎 <strong>Hold Forever:</strong> AMZN · META · TSM · SHOP · KMI · NVDA · CVX · GLD — 8 stocks. 60–70% of portfolio. Never sell the core.
+        </TabBanner>
+        {foreverStocks.map(s => <StockCard key={s.ticker} s={s} {...props} />)}
+      </div>
+    )}
+
+    {/* ADD TAB */}
+    {tab === "add" && (
+      <div className="slide-up">
+        <TabBanner color="#34d399">
+          🚀 <strong>Add Heavily Now:</strong> GRAB · UUUU · ASTS · HOOD · NNE · RKLB · IONQ · PL · LMD. Capital freed from patience positions goes here.
+        </TabBanner>
+        {addStocks.map(s => <StockCard key={s.ticker} s={s} {...props} />)}
+      </div>
+    )}
+
+    {/* PATIENCE TAB */}
+    {tab === "patience" && (
+      <div className="slide-up">
+        <TabBanner color="#f97316">
+          ⏳ <strong>Hold with Patience:</strong> TAOX · CHPT · NRDY · FSLY · PATH. Each has a defined exit trigger. Capital freed here → Growth + Forever.
+        </TabBanner>
+        {patienceStocks.map(s => <StockCard key={s.ticker} s={s} {...props} />)}
+      </div>
+    )}
+
+    {/* WATCHLIST TAB */}
+    {tab === "watchlist" && (
+      <div className="slide-up">
+        <TabBanner color="#60a5fa">
+          👀 <strong>Watchlist:</strong> QBTS · STM — waiting for the right entry. Slot in as patience positions clear, staying within the 15–20 stock sweet spot.
+        </TabBanner>
+        {watchStocks.map(s => <StockCard key={s.ticker} s={s} {...props} />)}
+      </div>
+    )}
+
+    {/* CLAUDE PICKS TAB */}
+    {tab === "suggest" && (
+      <div className="slide-up">
+        <TabBanner color="#c4b5fd">
+          ✨ <strong>Claude's Own Picks:</strong> Nuclear, eVTOL, solar infrastructure, clean crypto mining, voice AI. All under $50, several under $10.
+        </TabBanner>
+        {CLAUDE_PICKS.map(s => <ClaudeCard key={s.ticker} s={s} priceData={priceData} loading={loading} />)}
+
+        {/* Swaps */}
+        <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)",
+          borderRadius:10, padding:"13px 14px", marginTop:12 }}>
+          <div style={{ fontSize:11, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Swap Suggestions</div>
+          {SWAPS.map((r,i) => (
+            <div key={i} className="swap-row" style={{ borderBottom:i<SWAPS.length-1?"1px solid rgba(255,255,255,0.05)":"none" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0, minWidth:110 }}>
+                <span style={{ color:"#f87171", fontFamily:"'IBM Plex Mono',monospace", fontSize:11, fontWeight:700 }}>{r.out}</span>
+                <span style={{ color:"#4b5563", fontSize:11 }}>→</span>
+                <span style={{ color:"#34d399", fontFamily:"'IBM Plex Mono',monospace", fontSize:11, fontWeight:700 }}>{r.into}</span>
+              </div>
+              <div style={{ color:"#9ca3af", fontSize:11, lineHeight:1.6 }}>{r.reason}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* RESEARCH TAB */}
+    {tab === "research" && (
+      <div className="slide-up">
+        <div style={{ background:"linear-gradient(135deg,rgba(124,58,237,0.15),rgba(37,99,235,0.1))",
+          border:"1px solid rgba(124,58,237,0.35)", borderRadius:12, padding:"15px 14px", marginBottom:12 }}>
+          <div style={{ fontSize:10, color:"#a78bfa", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>Research Verdict</div>
+          <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:10, flexWrap:"wrap" }}>
+            <div style={{ fontSize:48, fontWeight:900, fontFamily:"'IBM Plex Mono',monospace", color:"#f9fafb", lineHeight:1 }}>15–20</div>
+            <div>
+              <div style={{ color:"#c4b5fd", fontSize:14, fontWeight:700 }}>The Investor Sweet Spot</div>
+              <div style={{ color:"#9ca3af", fontSize:11, marginTop:2 }}>85–90% risk reduction · Concentrated enough to outperform</div>
+            </div>
+          </div>
+          <div style={{ color:"#d1d5db", fontSize:12, lineHeight:1.7 }}>
+            Ideal end state: 15–18 stocks. 8 forever compounders (60–65%), 5–6 high-growth adds (25–30%), 3–4 asymmetric bets (10–15%). Currently tracking {TOTAL_POSITIONS} positions. As patience plays clear, reinvest into top-conviction names.
+          </div>
+        </div>
+
+        {/* Research table */}
+        <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)",
+          borderRadius:10, overflow:"hidden", marginBottom:12 }}>
+          <div style={{ padding:"10px 14px", borderBottom:"1px solid rgba(255,255,255,0.07)",
+            fontSize:10, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em" }}>Academic & Practitioner Research</div>
+          {RESEARCH.map((r,i) => (
+            <div key={i} className="research-row" style={{ borderBottom:i<RESEARCH.length-1?"1px solid rgba(255,255,255,0.04)":"none" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ color:"#f9fafb", fontSize:12, fontWeight:600 }}>{r.source}</div>
+                <div style={{ color:"#6b7280", fontSize:10, marginTop:1 }}>{r.finding}</div>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                <span style={{ background:`${ERACOLOR[r.era]}20`, border:`1px solid ${ERACOLOR[r.era]}40`,
+                  color:ERACOLOR[r.era], borderRadius:4, padding:"2px 6px", fontSize:9, fontWeight:600 }}>{r.era}</span>
+                <span style={{ fontFamily:"'IBM Plex Mono',monospace", color:"#f9fafb", fontWeight:700,
+                  fontSize:12, minWidth:42, textAlign:"right" }}>{r.optimal}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Sector tags */}
+        <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:10, padding:"13px 14px" }}>
+          <div style={{ fontSize:10, color:"#6b7280", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Sectors Covered</div>
+          <div className="sector-tags">
+            {[
+              {s:"AI / Semiconductors",c:"#8b5cf6"},{s:"Space & Defense",c:"#6366f1"},
+              {s:"Quantum Computing",c:"#ec4899"},  {s:"Cybersecurity",c:"#3b82f6"},
+              {s:"Energy & Oil",c:"#f59e0b"},        {s:"Nuclear",c:"#f97316"},
+              {s:"Critical Minerals",c:"#94a3b8"},   {s:"Gold / Commodities",c:"#fbbf24"},
+              {s:"Fintech / Crypto",c:"#10b981"},    {s:"Biotech / AI Drug",c:"#ec4899"},
+              {s:"Robotics / RPA",c:"#60a5fa"},      {s:"E-Commerce / SaaS",c:"#3b82f6"},
+              {s:"SE Asia / Emerging",c:"#10b981"},  {s:"Clean Energy",c:"#34d399"},
+              {s:"Infrastructure",c:"#22c55e"},      {s:"Silver Mining",c:"#94a3b8"},
+            ].map(x=>(
+              <span key={x.s} className="sector-tag"
+                style={{ background:`${x.c}15`, border:`1px solid ${x.c}30`, color:x.c }}>{x.s}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div style={{ height:12 }} />
+    <div style={{ fontSize:10, color:"#1f2937", textAlign:"center", paddingBottom:4 }}>
+      Prices via live web search · Pre/during/after-market · Not financial advice
+    </div>
+    <div style={{ height:8 }} />
+  </div>
+
+  {/* ── BOTTOM NAV ── */}
+  <nav className="bottom-nav">
+    {TABS.map(t => (
+      <button key={t.id} className={`nav-btn ${tab===t.id?"active":""}`} onClick={() => setTab(t.id)}>
+        <span className="nav-icon">{t.icon}</span>
+        <span>{t.label}</span>
+      </button>
+    ))}
+  </nav>
+</div>
+```
+
+);
+}
+
+ReactDOM.createRoot(document.getElementById(“root”)).render(<App />);
+</script>
+
+</body>
+</html>
